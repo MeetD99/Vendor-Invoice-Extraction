@@ -240,7 +240,14 @@ class InvoiceAgent:
                 system_prompt=EXTRACTION_PROMPT,
                 messages=messages,
                 tools=available_tools,
-                response_model=None,
+                # Once the source has been read, the same turn may either call
+                # a related-document tool or return the strict final schema.
+                # This removes the old extra "now finalize" model round-trip.
+                response_model=(
+                    InvoiceExtraction
+                    if source_read and pending_related_type is None
+                    else None
+                ),
                 tool_choice=tool_choice,
             )
             # Some small OpenAI-compatible local models describe a forced tool in
@@ -314,6 +321,26 @@ class InvoiceAgent:
                 self._log_message(case_id, run_id, sequence, reminder)
                 sequence += 1
                 continue
+
+            # Fast path: many models return the final JSON directly after their
+            # tool results. Validate it locally instead of paying for another
+            # completion whose only purpose would be to repeat the same JSON.
+            extraction = self._parse_extraction(ai_message.content)
+            if extraction is not None:
+                required_type = self._referenced_document_type(extraction.payment_terms)
+                if required_type and required_type not in related_searches and "ANY" not in related_searches:
+                    pending_related_type = required_type
+                    reminder = HumanMessage(
+                        content=(
+                            f"The payment terms depend on {required_type}. You must call "
+                            "search_related_documents for that type, inspect the ToolMessage, and then finalize again."
+                        )
+                    )
+                    messages.append(reminder)
+                    self._log_message(case_id, run_id, sequence, reminder)
+                    sequence += 1
+                    continue
+                return extraction
 
             finalize = HumanMessage(
                 content="Return the final invoice extraction now. Output must match the required JSON schema exactly."
@@ -461,6 +488,20 @@ class InvoiceAgent:
         if re.search(r"(?i)delivery|confirmation", value):
             return "DELIVERY_CONFIRMATION"
         return None
+
+    @staticmethod
+    def _parse_extraction(content: str | None) -> InvoiceExtraction | None:
+        """Return a validated extraction when an ordinary agent turn already produced one."""
+        if not content:
+            return None
+        candidate = content.strip()
+        if candidate.startswith("```") and candidate.endswith("```"):
+            candidate = re.sub(r"^```(?:json)?\s*", "", candidate, flags=re.IGNORECASE)
+            candidate = re.sub(r"\s*```$", "", candidate)
+        try:
+            return InvoiceExtraction.model_validate_json(candidate)
+        except (TypeError, ValueError):
+            return None
 
     def _save_draft(
         self,
