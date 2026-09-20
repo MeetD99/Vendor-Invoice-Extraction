@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ app_name }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">AI Talent Quest</p>
+      <h1>Vendor Invoice Extraction</h1>
+    </div>
+    <span id="live-status" class="live"><i></i> Queue active</span>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <h2>Invoice operations, with every decision visible.</h2>
+        <p>Upload one complete document folder. The extraction agent reads the evidence, the validation agent runs deterministic checks, and only approved records reach payment.</p>
+        <div class="workflow-mini" aria-label="Processing workflow">
+          <div><span>1</span><strong>Index</strong><small>Group files and resolve revisions</small></div>
+          <i aria-hidden="true">→</i>
+          <div><span>2</span><strong>Extract</strong><small>LLM reads source documents</small></div>
+          <i aria-hidden="true">→</i>
+          <div><span>3</span><strong>Validate</strong><small>Check, commit, or flag</small></div>
+        </div>
+      </div>
+      <form id="upload-form" class="upload-card">
+        <label class="drop-zone" for="folder-input">
+          <strong>Select invoice folder</strong>
+          <span>Text invoices and related documents are staged as one batch.</span>
+          <input id="folder-input" type="file" webkitdirectory multiple required>
+        </label>
+        <label class="registry-field">
+          <span>Status registry CSV <small>optional</small></span>
+          <input id="registry-input" type="file" accept=".csv,text/csv">
+        </label>
+        <div class="upload-footer">
+          <span id="selection-summary">No folder selected</span>
+          <button type="submit" class="primary">Upload and process</button>
+        </div>
+        <div id="upload-message" class="message" hidden></div>
+      </form>
+    </section>
+
+    <section id="metrics" class="metrics"></section>
+
+    <section class="workspace">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Case queue</p>
+          <h2>Document bundles</h2>
+        </div>
+        <button id="refresh-button" class="secondary">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Case</th>
+              <th>Status</th>
+              <th>Vendor</th>
+              <th>Invoice</th>
+              <th>Documents</th>
+              <th>Payment</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="case-list"></tbody>
+        </table>
+      </div>
+      <div id="empty-state" class="empty" hidden>
+        <strong>No cases yet</strong>
+        <span>Upload the invoice folder to begin.</span>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="case-dialog">
+    <div id="case-detail"></div>
+  </dialog>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
